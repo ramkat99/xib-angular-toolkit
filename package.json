@@ -1,0 +1,24 @@
+{
+  "name": "ramkat99/xib-angular-toolkit",
+  "version": "0.1.0",
+  "registry": "github",
+  "jspm": {
+    "registry": "jspm",
+    "main": "angular-toolkit.js",
+    "format": "es6",
+    "directories": {
+      "lib": "src"
+    },
+    "dependencies": {
+      "angular": "github:angular/bower-angular@^1.5.8"
+    },
+    "devDependencies": {
+      "babel": "npm:babel-core@^5.8.24",
+      "babel-runtime": "npm:babel-runtime@^5.8.24",
+      "core-js": "npm:core-js@^1.1.4"
+    }
+  },
+  "devDependencies": {
+    "jspm": "^0.16.47"
+  }
+}
