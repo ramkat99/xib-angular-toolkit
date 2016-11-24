@@ -2,17 +2,26 @@
 
 import angular from 'angular';
 
-let toolkitModule = angular.module('xib-angular-toolkit', []);
+let module = angular.module('xib-angular-toolkit', []);
 
-function Run() {
-  return function decorator(target, key, descriptor) {
-    toolkitModule.run(descriptor.value);
+function Inject(...deps) {
+  return (target, key, descriptor)=> {
+    if(descriptor) {
+      const fn = descriptor.value;
+      fn.$inject = deps;
+    } else {
+      target.$inject = deps;
+    }
   };
 }
 
-function Config() {
+function Config(...deps) {
   return function decorator(target, key, descriptor) {
-    toolkitModule.config(descriptor.value);
+    const fn = descriptor ? descriptor.value : target;
+    if (deps) {
+      fn.$inject = deps;
+    }
+    module.config(fn);
   };
 }
 
@@ -22,7 +31,100 @@ function Service(options) {
     if (!options.serviceName) {
       throw new Error('@Service() must contains serviceName property!');
     }
-    toolkitModule.service(options.serviceName, target);
+    module.service(options.serviceName, target);
+  };
+}
+
+function Directive(options) {
+  return function decorator(target) {
+    const defaultOptions = {
+      template: options.template,
+      replace : options.replace != undefined ? options.replace : false,
+      restrict: options.restrict,
+      bindToController: options.replace != undefined ? options.bindToController : true,
+      controllerAs: options.controllerAs ? options.controllerAs : 'vm',
+      scope: options.scope ? options.scope : {}
+    };
+
+    if (target.link){
+      defaultOptions.link = target.link;
+    }
+
+    if (target.template){
+      defaultOptions.template = target.template;
+    }
+
+    defaultOptions.controller = target;
+
+    module.directive(options.selector, ()=> {
+      return angular.extend(defaultOptions, options);
+    });
+  };
+}
+
+function Component(options) {
+  return function decorator(target) {
+    const defaultOptions = {
+      controllerAs: options.controllerAs ? options.controllerAs : 'vm'
+    };
+
+    if (target.$templateFunction){
+      if (defaultOptions.template || defaultOptions.templateUrl){
+        throw new Error('Cannot specify a template/templateUrl as well as use a @Template function method!');
+      }
+      defaultOptions.template = target.$templateFunction;
+    }
+
+    let directiveName = options.selector;
+    defaultOptions.controller = target;
+
+    angular.extend(defaultOptions, options);
+    module.component(directiveName, defaultOptions);
+  };
+}
+
+function Template(...dependencies) {
+  return (target, key, descriptor)=> {
+    if(descriptor) {
+      const fn = descriptor.value;
+      fn.$inject = dependencies;
+      target.constructor.$templateFunction = fn;
+
+    } else {
+      throw new Error('@Template() can only be used on a method!');
+    }
+  };
+}
+
+function Provider(name){
+  return function decorator(target) {
+    module.provider(name, target);
+  };
+}
+
+export default module;
+export {Inject, Config, Service, Component, Template, Provider, Directive};
+
+/*
+function Run() {
+  return function decorator(target, key, descriptor) {
+    module.run(descriptor.value);
+  };
+}
+
+function Config() {
+  return function decorator(target, key, descriptor) {
+    module.config(descriptor.value);
+  };
+}
+
+function Service(options) {
+  return function decorator(target) {
+    options = options ? options : {};
+    if (!options.serviceName) {
+      throw new Error('@Service() must contains serviceName property!');
+    }
+    module.service(options.serviceName, target);
   };
 }
 
@@ -32,12 +134,12 @@ function Filter(filter) {
     if (!filter.filterName) {
       throw new Error('@Filter() must contains filterName property!');
     }
-    toolkitModule.filter(filter.filterName, descriptor.value);
+    module.filter(filter.filterName, descriptor.value);
   };
 }
 
 function Inject(...dependencies) {
-  return function decorator(target, key, descriptor) {
+  return (target, key, descriptor)=> {
     // if it's true then we injecting dependencies into function and not Class constructor
     if(descriptor) {
       const fn = descriptor.value;
@@ -47,6 +149,7 @@ function Inject(...dependencies) {
     }
   };
 }
+
 
 function Component(component) {
   return function decorator(target) {
@@ -62,6 +165,7 @@ function Component(component) {
     target.$isComponent = true;
   };
 }
+
 
 function View(view) {
   let options = view ? view : {};
@@ -84,7 +188,7 @@ function View(view) {
 
       options.bindToController = options.bindToController || options.bind || {};
 
-      toolkitModule.directive(directiveName, function () {
+      module.directive(directiveName, function () {
         return Object.assign(defaults, { controller: target }, options);
       });
     };
@@ -96,19 +200,19 @@ function View(view) {
 function Directive(options) {
   return function decorator(target) {
     const directiveName = dashCaseToCamelCase(options.selector);
-    toolkitModule.directive(directiveName, target.directiveFactory);
+    module.directive(directiveName, target.directiveFactory);
   };
 }
 
 function RouteConfig(stateName, options) {
   return function decorator(target) {
-    toolkitModule.config(['$stateProvider', ($stateProvider) => {
+    module.config(['$stateProvider', ($stateProvider) => {
       $stateProvider.state(stateName, Object.assign({
         controller: target,
         controllerAs: 'vm'
       }, options));
     }]);
-    toolkitModule.controller(target.name, target);
+    module.controller(target.name, target);
   };
 }
 
@@ -123,8 +227,21 @@ function dashCaseToCamelCase(string) {
   });
 }
 
-export default toolkitModule;
-export {Component, View, RouteConfig, Inject, Run, Config, Service, Filter, Directive};
+function Provider(name){
+  return function decorator(target) {
+    module.provider(name, target);
+  };
+}
 
+export default module;
+export {View, RouteConfig, Inject, Run, Config, Service, Filter, Directive, Provider};
+
+export * from './utils.js';
+export * from './bindings.js';
+export * from './directives.js';
+export * from './services.js';
+export * from './utils.js';
+
+*/
 
 
